@@ -14,9 +14,9 @@
 
 body, html {
   margin: 0;
-  background: var(--light-bg);
-  color: var(--text);
-  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f8f9fa;
+  color: #212121;
+  font-family: 'Roboto Variable', 'Segoe UI', Arial, sans-serif;
 }
 
 /* Authentication Card */
