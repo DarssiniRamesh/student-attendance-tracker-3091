@@ -1,39 +1,119 @@
 import React, { useState, useEffect } from "react";
+import {
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+  Box,
+  Typography,
+  Drawer,
+  IconButton,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Button,
+  AppBar,
+  Toolbar,
+  Divider,
+  Paper,
+  Tooltip,
+  Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Slide,
+  MenuItem,
+  Snackbar,
+  Alert
+} from "@mui/material";
+import {
+  Menu as MenuIcon,
+  Dashboard as DashboardIcon,
+  Group as GroupIcon,
+  History as HistoryIcon,
+  CheckCircle as CheckCircleIcon,
+  Logout as LogoutIcon,
+  AssignmentInd as AssignmentIndIcon,
+  HighlightOff as HighlightOffIcon,
+  Schedule as ScheduleIcon,
+  Percent as PercentIcon,
+  PersonAdd as PersonAddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  AccountCircle as AccountCircleIcon,
+  Close as CloseIcon
+} from "@mui/icons-material";
+import { styled } from "@mui/material/styles";
+import "@fontsource-variable/roboto";
 import "./App.css";
 
-// Color theme variables
-const COLORS = {
-  primary: "#1976D2",
-  accent: "#FFA726",
-  secondary: "#424242",
-  lightBg: "#f8f9fa",
-  mainBg: "#fff",
-  border: "#e0e0e0",
-  success: "#43A047",
-  error: "#D32F2F",
-  text: "#212121",
-  textLight: "#757575"
+// --- Theme and Palette ---
+const palette = {
+  primary: { main: "#1976D2" },
+  secondary: { main: "#424242" },
+  accent: { main: "#FFA726" },
+  background: { default: "#f8f9fa", paper: "#fff" },
+  success: { main: "#43A047" },
+  error: { main: "#D32F2F" }
 };
+const muiTheme = createTheme({
+  palette: {
+    primary: palette.primary,
+    secondary: palette.secondary,
+    background: palette.background,
+    accent: palette.accent,
+    success: palette.success,
+    error: palette.error,
+    mode: "light"
+  },
+  typography: {
+    fontFamily: [
+      "Roboto Variable", "Segoe UI", "Arial", "sans-serif"
+    ].join(","),
+    h2: { fontWeight: 700 },
+    h3: { fontWeight: 700 },
+    h5: { fontWeight: 600 }
+  },
+  shape: {
+    borderRadius: 15
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 10,
+          fontWeight: 700,
+          letterSpacing: 0.2,
+          textTransform: "none"
+        }
+      }
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          transition: "box-shadow .16s cubic-bezier(.4,0,.2,1)",
+        }
+      }
+    }
+  }
+});
 
-// === Local Storage Keys ===
+// --- Local Storage Data Keys & Helpers ---
 const LS_KEYS = {
   USER: "attendance_user",
   STUDENTS: "attendance_students",
   ATTENDANCE: "attendance_records"
 };
-
-// === Initial Data Structure ===
 const INITIAL_USERS = [
   { email: "admin@school.org", password: "admin123", role: "admin" },
   { email: "teacher@school.org", password: "teach123", role: "teacher" }
 ];
-
-// Helper for today in YYYY-MM-DD
 function todayStr() {
   const d = new Date();
   return d.toISOString().slice(0, 10);
 }
-
 function loadData(key, fallback) {
   try {
     const v = window.localStorage.getItem(key);
@@ -46,26 +126,92 @@ function saveData(key, value) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
-// === COMPONENTS ===
+// --- Sidebar config ---
+const drawerWidth = 250;
+const navLinks = [
+  {
+    label: "Dashboard",
+    icon: <DashboardIcon />,
+    key: "dashboard"
+  },
+  {
+    label: "Students",
+    icon: <GroupIcon />,
+    key: "students"
+  },
+  {
+    label: "Attendance",
+    icon: <CheckCircleIcon />,
+    key: "attendance"
+  },
+  {
+    label: "History",
+    icon: <HistoryIcon />,
+    key: "history"
+  }
+];
 
+// --- Styled components for polish ---
+const LogoFlex = styled(Box)(({ theme }) => ({
+  display: "flex", alignItems: "center"
+}));
+const ModernAvatar = styled(Avatar)(({ theme }) => ({
+  background: theme.palette.accent.main,
+  color: theme.palette.primary.main,
+  fontWeight: 700,
+  fontSize: 20,
+  marginRight: 8,
+  width: 42, height: 42,
+  boxShadow: "0 2px 12px #ffa72666"
+}));
+const StatPaper = styled(Paper)(({ color, theme }) => ({
+  flex: "1 1 150px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  padding: "26px 24px 18px",
+  minWidth: 140,
+  background: theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius + 3,
+  boxShadow: `0 4px 16px 0 ${color || "#1976d233"}`,
+  marginBottom: 6,
+  transition: "transform .13s, box-shadow .13s",
+  "&:hover": {
+    transform: "translateY(-2.5px) scale(1.035)",
+    boxShadow: `0 8px 28px 0 ${color || "#1976d255"}`,
+  }
+}));
+const BlurredDialog = styled(Dialog)(({ theme }) => ({
+  "& .MuiPaper-root": {
+    backdropFilter: "blur(3.5px)",
+    backgroundColor: "rgba(255,255,255,0.87)!important"
+  }
+}));
+
+// === MAIN APP COMPONENT ===
 // PUBLIC_INTERFACE
 function App() {
-  // Authentication state
+  // Auth and user state
   const [user, setUser] = useState(null);
-  // Main navigation: "dashboard", "students", "attendance", "history"
   const [nav, setNav] = useState("dashboard");
-
-  // Data states
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState([]);
+  // UI state
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [snack, setSnack] = useState({ open: false, message: "", severity: "info" });
 
-  // For login form
+  // Authentication form
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [loginError, setLoginError] = useState("");
 
-  // Load from LocalStorage on mount
+  // Student modal form
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState("add"); // add/edit
+  const [formData, setFormData] = useState({ full_name: "", roll_no: "", class: "" });
+  const [formId, setFormId] = useState(null);
+
+  // Load data on mount
   useEffect(() => {
-    // In Non-demo, you'd never keep starter accounts here
     if (!window.localStorage.getItem("attendance_initialized")) {
       saveData(LS_KEYS.STUDENTS, []);
       saveData(LS_KEYS.ATTENDANCE, []);
@@ -75,8 +221,6 @@ function App() {
     setStudents(loadData(LS_KEYS.STUDENTS, []));
     setAttendance(loadData(LS_KEYS.ATTENDANCE, []));
   }, []);
-
-  // Persist students or attendance changes
   useEffect(() => {
     saveData(LS_KEYS.STUDENTS, students);
   }, [students]);
@@ -88,20 +232,21 @@ function App() {
     else window.localStorage.removeItem(LS_KEYS.USER);
   }, [user]);
 
-  // === Navigation
-  function handleNav(page) {
-    setNav(page);
-  }
-  function handleLogout() {
-    setUser(null);
-    setNav("dashboard");
-  }
+  // Sidebar Responsive Handling
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth < 900) setMobileOpen(false);
+      else setMobileOpen(true);
+    }
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  // === Authentication ===
+  // --- Authentication ---
   // PUBLIC_INTERFACE
   function handleLoginSubmit(e) {
     e.preventDefault();
-    // Only demo users, no signup
     const found = INITIAL_USERS.find(
       (u) =>
         u.email === loginForm.email.trim() &&
@@ -111,8 +256,10 @@ function App() {
       setUser({ email: found.email, role: found.role });
       setLoginError("");
       setLoginForm({ email: "", password: "" });
+      setSnack({ open: true, message: `Logged in as ${found.role}`, severity: "success" });
     } else {
       setLoginError("Invalid credentials.");
+      setSnack({ open: true, message: "Invalid login credentials.", severity: "error" });
     }
   }
   // PUBLIC_INTERFACE
@@ -120,7 +267,18 @@ function App() {
     setLoginForm({ ...loginForm, [e.target.name]: e.target.value });
   }
 
-  // === STUDENT MANAGEMENT ===
+  // --- Navigation/Logout
+  function handleNav(page) {
+    setNav(page);
+    setMobileOpen(false);
+  }
+  function handleLogout() {
+    setUser(null);
+    setNav("dashboard");
+    setSnack({ open: true, message: "Logged out", severity: "info" });
+  }
+
+  // --- Student Management
   // PUBLIC_INTERFACE
   function addStudent(student) {
     const nextId = students.length
@@ -128,24 +286,51 @@ function App() {
       : 1;
     const newStudent = { ...student, id: nextId, active: true };
     setStudents([...students, newStudent]);
+    setSnack({ open: true, message: "Student added!", severity: "success" });
   }
-
   // PUBLIC_INTERFACE
   function updateStudent(id, changes) {
-    setStudents(
-      students.map((s) => (s.id === id ? { ...s, ...changes } : s))
-    );
+    setStudents(students.map((s) => (s.id === id ? { ...s, ...changes } : s)));
+    setSnack({ open: true, message: "Student updated!", severity: "success" });
   }
   // PUBLIC_INTERFACE
   function deleteStudent(id) {
     setStudents(students.filter((s) => s.id !== id));
     setAttendance(attendance.filter((rec) => rec.student_id !== id));
+    setSnack({ open: true, message: "Student deleted.", severity: "warning" });
+  }
+  // Handle form open/close for add/edit
+  function openForm(mode, stud = null) {
+    setFormMode(mode);
+    if (mode === "edit" && stud) {
+      setFormData({ full_name: stud.full_name, roll_no: stud.roll_no, class: stud.class });
+      setFormId(stud.id);
+    } else {
+      setFormData({ full_name: "", roll_no: "", class: "" });
+      setFormId(null);
+    }
+    setFormOpen(true);
+  }
+  function closeForm() {
+    setFormOpen(false);
+  }
+  function handleFormChange(e) {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  }
+  function handleFormSubmit(e) {
+    e.preventDefault();
+    if (!formData.full_name.trim() || !formData.roll_no.trim() || !formData.class.trim()) return;
+    if (formMode === "edit" && formId != null) {
+      updateStudent(formId, { ...formData });
+    } else {
+      addStudent(formData);
+    }
+    closeForm();
   }
 
-  // === ATTENDANCE ===
+  // --- Attendance
   // PUBLIC_INTERFACE
   function markAttendance({ student_id, status, date }) {
-    // Overwrite today's attendance for this student
     const existing = attendance.find(
       (r) => r.student_id === student_id && r.date === date
     );
@@ -171,9 +356,10 @@ function App() {
       );
     }
     setAttendance(newRecs);
+    setSnack({ open: true, message: "Attendance marked!", severity: "success" });
   }
 
-  // === Derived data: Dashboard Summary
+  // Derived dashboard stats
   const dashboardStats = (() => {
     const today = todayStr();
     const recs = attendance.filter((r) => r.date === today);
@@ -198,427 +384,594 @@ function App() {
     };
   })();
 
-  // === Responsive sidebar toggle
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 900);
-  useEffect(() => {
-    function handleResize() {
-      setSidebarOpen(window.innerWidth > 900);
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // === Render
+  // --- Login Page ---
   if (!user) {
     return (
-      <div className="auth-bg">
-        <div className="auth-card">
-          <Logo />
-          <h2>Attendance Tracker Login</h2>
-          <form className="auth-form" onSubmit={handleLoginSubmit}>
-            <label>
-              Email
-              <input
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <Box
+          minHeight="100vh"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          sx={{
+            background: "linear-gradient(105deg,#eaf6ff 30%,#fff 80%)"
+          }}
+        >
+          <Paper
+            elevation={9}
+            sx={{
+              borderRadius: 5,
+              px: { xs: 2, sm: 4 },
+              py: 5,
+              maxWidth: 385,
+              width: "95vw",
+              boxShadow: "0 6px 32px #1976d22a"
+            }}
+          >
+            <LogoBrand />
+            <Typography variant="h5" mb={2} fontWeight={700} sx={{ letterSpacing: 0.4 }}>
+              Attendance Tracker Login
+            </Typography>
+            <form onSubmit={handleLoginSubmit} autoComplete="on">
+              <TextField
+                autoFocus
                 required
+                fullWidth
+                margin="dense"
+                label="Email"
+                name="email"
+                variant="outlined"
                 type="email"
                 value={loginForm.email}
-                name="email"
-                autoComplete="username"
                 onChange={handleLoginInput}
+                sx={{ mb: 2 }}
               />
-            </label>
-            <label>
-              Password
-              <input
+              <TextField
                 required
+                fullWidth
+                label="Password"
+                name="password"
+                variant="outlined"
                 type="password"
                 value={loginForm.password}
-                name="password"
-                autoComplete="current-password"
                 onChange={handleLoginInput}
+                sx={{ mb: 2 }}
               />
-            </label>
-            {loginError && (
-              <div className="form-error" data-testid="login-error">
-                {loginError}
-              </div>
-            )}
-            <button className="btn-primary" type="submit">
-              Log in
-            </button>
-          </form>
-          <p className="hint">
-            <b>Demo accounts:</b>
-            <br />
-            admin@school.org / admin123
-            <br />
-            teacher@school.org / teach123
-          </p>
-        </div>
-      </div>
+              {loginError && (
+                <Alert severity="error" sx={{ mt: 0, mb: 1 }}>
+                  {loginError}
+                </Alert>
+              )}
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                color="primary"
+                fullWidth
+                sx={{
+                  fontWeight: 700,
+                  mt: 2,
+                  py: 1.6,
+                  fontSize: "1.08em",
+                  boxShadow: "0 2px 8px #1976d215"
+                }}
+              >
+                Log In
+              </Button>
+            </form>
+            <Typography mt={2.2} color="text.secondary" fontSize={15} align="center">
+              <span style={{ fontWeight: 600 }}>Demo:</span>
+              <br />admin@school.org / admin123<br />
+              teacher@school.org / teach123
+            </Typography>
+          </Paper>
+          <Snackbar
+            open={snack.open}
+            autoHideDuration={3400}
+            onClose={() => setSnack({ ...snack, open: false })}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          >
+            <Alert onClose={() => setSnack({ ...snack, open: false })} severity={snack.severity} sx={{ width: '100%' }}>
+              {snack.message}
+            </Alert>
+          </Snackbar>
+        </Box>
+      </ThemeProvider>
     );
   }
 
+  // --- Authenticated Main Layout ---
   return (
-    <div className="root-layout">
-      <Sidebar
-        nav={nav}
-        onNav={handleNav}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        user={user}
-        onLogout={handleLogout}
-      />
-      <div className="main-content">
-        <TopBar
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline />
+      <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
+        {/* Sidebar navigation (Drawer) */}
+        <AppDrawer
+          user={user}
+          nav={nav}
+          handleNav={handleNav}
+          open={mobileOpen}
+          setOpen={setMobileOpen}
+          handleLogout={handleLogout}
         />
-        <div className="main-area">
-          {nav === "dashboard" && (
-            <DashboardOverview stats={dashboardStats} />
-          )}
-          {nav === "students" && (
-            <Students
-              students={students}
-              addStudent={addStudent}
-              updateStudent={updateStudent}
-              deleteStudent={deleteStudent}
-            />
-          )}
-          {nav === "attendance" && (
-            <Attendance
-              students={students}
-              attendance={attendance}
-              markAttendance={markAttendance}
-            />
-          )}
-          {nav === "history" && (
-            <AttendanceHistory attendance={attendance} students={students} />
-          )}
-        </div>
-      </div>
-    </div>
+        <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          {/* App Bar/TopBar */}
+          <ElevatedAppBar open={mobileOpen} setOpen={setMobileOpen} />
+          <Box component="main" sx={{ flex: 1, py: { xs: 2, md: 4 }, px: { xs: 1.7, sm: 2.5, md: 4 }, width: "100%", maxWidth: 1150, margin: "0 auto" }}>
+            {nav === "dashboard" && <DashboardOverview stats={dashboardStats} />}
+            {nav === "students" && (
+              <Students
+                students={students}
+                addStudent={addStudent}
+                updateStudent={updateStudent}
+                deleteStudent={deleteStudent}
+                openForm={openForm}
+              />
+            )}
+            {nav === "attendance" && (
+              <Attendance
+                students={students}
+                attendance={attendance}
+                markAttendance={markAttendance}
+              />
+            )}
+            {nav === "history" && (
+              <AttendanceHistory attendance={attendance} students={students} />
+            )}
+          </Box>
+        </Box>
+        {/* Student Dialog */}
+        <BlurredDialog
+          open={formOpen}
+          onClose={closeForm}
+          TransitionComponent={Slide}
+          TransitionProps={{ direction: "up" }}
+          aria-labelledby="student-form"
+        >
+          <DialogTitle id="student-form" sx={{ fontWeight: 700, letterSpacing: 0.4, color: "primary.main" }}>
+            {formMode === "edit" ? "Edit Student" : "Add Student"}
+          </DialogTitle>
+          <DialogContent>
+            <Box component="form" onSubmit={handleFormSubmit} sx={{ pt: 1, display: 'flex', flexDirection: "column", gap: 1.7 }}>
+              <TextField
+                required
+                name="full_name"
+                label="Name"
+                value={formData.full_name}
+                onChange={handleFormChange}
+                autoFocus
+                margin="dense"
+              />
+              <TextField
+                required
+                name="roll_no"
+                label="Roll Number"
+                value={formData.roll_no}
+                onChange={handleFormChange}
+                margin="dense"
+              />
+              <TextField
+                required
+                name="class"
+                label="Class"
+                value={formData.class}
+                onChange={handleFormChange}
+                margin="dense"
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ pb: 2, px: 3 }}>
+            <Button onClick={closeForm} variant="outlined" color="secondary">
+              Cancel
+            </Button>
+            <Button onClick={handleFormSubmit} type="submit" variant="contained" color="primary" sx={{ fontWeight: 700 }}>
+              {formMode === "edit" ? "Save" : "Add"}
+            </Button>
+          </DialogActions>
+        </BlurredDialog>
+        <Snackbar
+          open={snack.open}
+          autoHideDuration={3400}
+          onClose={() => setSnack({ ...snack, open: false })}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Alert onClose={() => setSnack({ ...snack, open: false })} severity={snack.severity} sx={{ width: '100%' }}>
+            {snack.message}
+          </Alert>
+        </Snackbar>
+      </Box>
+    </ThemeProvider>
   );
 }
 
-// ----------------- Layout and UI Components -------------------
-
-// Logo SVG
-function Logo() {
+// --- Logo Brand (modern) ---
+function LogoBrand() {
   return (
-    <div className="logo">
-      <svg
-        width="32"
-        height="32"
-        viewBox="0 0 50 50"
-        fill={COLORS.primary}
-        xmlns="http://www.w3.org/2000/svg"
-        style={{
-          verticalAlign: "middle",
-          marginRight: 8
-        }}
-      >
-        <circle cx="25" cy="25" r="24" stroke={COLORS.primary} strokeWidth="2" fill={COLORS.accent} />
-        <text x="50%" y="60%" textAnchor="middle" fontWeight="bold" fontFamily="Arial" fontSize="21" fill={COLORS.primary}>
-          AT
-        </text>
-      </svg>
-      <span className="logo-text" style={{ color: COLORS.primary, fontWeight: 700, fontSize: 22 }}>
+    <LogoFlex mb={2}>
+      <ModernAvatar variant="rounded">AT</ModernAvatar>
+      <Typography variant="h5" color="primary" fontWeight={800} ml={-0.2} letterSpacing={1.0}>
         Tracker
-      </span>
-    </div>
+      </Typography>
+    </LogoFlex>
   );
 }
 
-// Sidebar navigation
-function Sidebar({ nav, onNav, sidebarOpen, setSidebarOpen, user, onLogout }) {
+// --- Drawer Sidebar (navigation) ---
+function AppDrawer({ user, nav, handleNav, open, setOpen, handleLogout }) {
   return (
-    <aside className={`sidebar${sidebarOpen ? "" : " collapsed"}`} tabIndex="-1">
-      <div className="sidebar-header">
-        <Logo />
-        {sidebarOpen && (
-          <span className="sidebar-close" onClick={() => setSidebarOpen(false)} tabIndex={0} title="Hide menu">
-            ×
-          </span>
-        )}
-      </div>
-      <nav className="sidebar-nav">
-        <SidebarLink
-          label="Dashboard"
-          active={nav === "dashboard"}
-          icon="dashboard"
-          onClick={() => onNav("dashboard")}
-        />
-        <SidebarLink
-          label="Students"
-          active={nav === "students"}
-          icon="group"
-          onClick={() => onNav("students")}
-        />
-        <SidebarLink
-          label="Attendance"
-          active={nav === "attendance"}
-          icon="check_circle"
-          onClick={() => onNav("attendance")}
-        />
-        <SidebarLink
-          label="History"
-          active={nav === "history"}
-          icon="history"
-          onClick={() => onNav("history")}
-        />
-      </nav>
-      <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <span className="user-icon" title={user.role}>
-            <span className="material-icons" style={{ color: COLORS.primary }}>account_circle</span>
-          </span>{" "}
-          <span className="sidebar-email">{user.email}</span>
-        </div>
-        <button className="btn-secondary fullwidth" onClick={onLogout}>
-          <span className="material-icons" style={{ verticalAlign: "middle", fontSize: 18, color: COLORS.secondary }}>logout</span>
-          Logout
-        </button>
-      </div>
-    </aside>
-  );
-}
-function SidebarLink({ label, active, icon, onClick }) {
-  return (
-    <div
-      className={`sidebar-link${active ? " active" : ""}`}
-      onClick={onClick}
-      tabIndex={0}
-      title={label}
-      role="menuitem"
+    <Drawer
+      variant="persistent"
+      open={open}
+      anchor="left"
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        "& .MuiDrawer-paper": {
+          width: drawerWidth,
+          boxSizing: "border-box",
+          background: "rgba(255,255,255,0.98)",
+          borderRight: "2px solid #1976D225",
+          boxShadow: "4px 0 16px 0 #1976D210",
+          transition: "all .22s cubic-bezier(.7,.25,.33,1.36)"
+        },
+        display: { xs: open ? "block" : "none", md: "block" }
+      }}
+      PaperProps={{
+        elevation: 3,
+        sx: { pt: 1.5 }
+      }}
     >
-      <span className="material-icons" style={{ fontSize: 20, verticalAlign: "middle", color: active ? COLORS.primary : COLORS.textLight, marginRight: 8 }}>
-        {icon}
-      </span>
-      {label}
-    </div>
+      <Box px={2} py={2.6}>
+        <LogoBrand />
+        <IconButton
+          onClick={() => setOpen(false)}
+          edge="end"
+          size="small"
+          sx={{
+            position: "absolute", right: 12, top: 8,
+            bgcolor: "#fff", color: "#424242aa",
+            display: { xs: "inline-flex", md: "none" }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </Box>
+      <Divider />
+      <List sx={{ mt: 0.5 }}>
+        {navLinks.map((link) => (
+          <ListItem
+            button
+            key={link.key}
+            selected={nav === link.key}
+            onClick={() => handleNav(link.key)}
+            sx={{
+              borderRadius: "11px 0 0 11px",
+              mb: 0.2,
+              mx: 0.5,
+              color: nav === link.key ? "primary.main" : "text.secondary",
+              background: nav === link.key ? "rgba(25,118,210,0.075)" : undefined,
+              transition: "background .14s"
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 34, color: nav === link.key ? "primary.main" : "secondary.main" }}>
+              {link.icon}
+            </ListItemIcon>
+            <ListItemText primary={link.label} primaryTypographyProps={{ fontWeight: nav === link.key ? 700 : 500, fontSize: "1.11em" }} />
+          </ListItem>
+        ))}
+      </List>
+      <Box flex="1 1 0" />
+      <Box px={2} pb={2} mt={8}>
+        <Divider sx={{ mb: 1.5 }} />
+        <Box display="flex" alignItems="center" mb={0.8}>
+          <Avatar sx={{ bgcolor: "primary.main", mr: 1, width: 32, height: 32 }}>
+            <AccountCircleIcon />
+          </Avatar>
+          <Box>
+            <Typography fontSize={14.2} fontWeight={700} color="primary.main">{user.email}</Typography>
+            <Typography fontSize={13} color="text.secondary">{user.role}</Typography>
+          </Box>
+        </Box>
+        <Button
+          variant="contained"
+          color="secondary"
+          startIcon={<LogoutIcon />}
+          onClick={handleLogout}
+          fullWidth
+          sx={{
+            mt: 1.2,
+            fontWeight: 700,
+            fontSize: 15,
+            boxShadow: "0 2px 8px 0 #42424218"
+          }}
+        >
+          Logout
+        </Button>
+      </Box>
+    </Drawer>
   );
 }
 
-// Top Navigation Bar
-function TopBar({ sidebarOpen, setSidebarOpen }) {
+// --- AppBar (Top Navigation) ---
+function ElevatedAppBar({ open, setOpen }) {
   return (
-    <header className="topbar" tabIndex={-1}>
-      {!sidebarOpen && (
-        <button className="menu-toggle" onClick={() => setSidebarOpen(true)}>
-          <span className="material-icons" style={{ color: COLORS.primary, fontSize: 26 }}>menu</span>
-        </button>
-      )}
-      <span style={{ fontWeight: 600, fontSize: "1.18em", marginLeft: sidebarOpen ? 0 : 16 }}>
-        <span className="material-icons" style={{ verticalAlign: "middle", color: COLORS.primary, marginRight: 4 }}>checklist</span>
-        Student Attendance Tracker
-      </span>
-    </header>
+    <AppBar
+      position="sticky"
+      color="inherit"
+      elevation={4}
+      sx={{
+        background: "linear-gradient(90deg,#eaf0fa 65%,#fff 100%)",
+        zIndex: (theme) => theme.zIndex.drawer + 1,
+        boxShadow: "0 1.5px 7px #1976d210"
+      }}
+    >
+      <Toolbar>
+        <IconButton
+          color="primary"
+          edge="start"
+          onClick={() => setOpen((old) => !old)}
+          sx={{
+            mr: 2, display: { xs: "inline-flex", md: "none" }
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+        <Typography variant="h6" fontWeight={700} sx={{ flexGrow: 1, letterSpacing: 0.4, display: "flex", alignItems: "center" }}>
+          <CheckCircleIcon sx={{ color: "primary.main", mr: 1, fontSize: 28 }} />
+          Student Attendance Tracker
+        </Typography>
+      </Toolbar>
+    </AppBar>
   );
 }
 
-// Dashboard Overview
+// --- Dashboard Overview ---
 function DashboardOverview({ stats }) {
   return (
-    <div className="dashboard">
-      <h2 style={{ marginTop: 0 }}>Attendance Overview ({todayStr()})</h2>
-      <div className="dashboard-cards">
-        <StatCard title="Total Students" value={stats.total} icon="group" color={COLORS.primary} />
-        <StatCard title="Present" value={stats.present} icon="check_circle" color={COLORS.success} />
-        <StatCard title="Absent" value={stats.absent} icon="highlight_off" color={COLORS.error} />
-        <StatCard title="Late" value={stats.late} icon="schedule" color={COLORS.accent} />
-        <StatCard title="Attendance %" value={stats.percent + "%"} icon="percent" color={COLORS.secondary} />
-      </div>
-    </div>
+    <Box my={0.7}>
+      <Typography variant="h4" fontWeight={700} gutterBottom sx={{ mt: 0 }}>
+        Attendance Overview <span style={{ fontWeight:400,fontSize:"0.82em" }}>({todayStr()})</span>
+      </Typography>
+      <Box display="flex" flexWrap="wrap" gap={2.4} my={2.2}>
+        <StatCard
+          icon={<GroupIcon />}
+          color="primary.main"
+          label="Total Students"
+          value={stats.total}
+        />
+        <StatCard
+          icon={<CheckCircleIcon />}
+          color="success.main"
+          label="Present"
+          value={stats.present}
+        />
+        <StatCard
+          icon={<HighlightOffIcon />}
+          color="error.main"
+          label="Absent"
+          value={stats.absent}
+        />
+        <StatCard
+          icon={<ScheduleIcon />}
+          color="accent.main"
+          label="Late"
+          value={stats.late}
+        />
+        <StatCard
+          icon={<PercentIcon />}
+          color="secondary.main"
+          label="Attendance %"
+          value={`${stats.percent}%`}
+        />
+      </Box>
+    </Box>
   );
 }
-function StatCard({ title, value, icon, color }) {
+function StatCard({ icon, color, label, value }) {
   return (
-    <div className="stat-card">
-      <span className="material-icons" style={{ color, fontSize: 28, marginBottom: 2 }}>{icon}</span>
-      <div className="stat-title">{title}</div>
-      <div className="stat-value">{value}</div>
-    </div>
+    <StatPaper
+      color={muiTheme.palette[color?.split(".")[0]]?.main || "#1976d211"}
+      elevation={6}
+    >
+      <Box mb={0.8} color={color}>{icon}</Box>
+      <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={0.5} letterSpacing={0.2}>{label}</Typography>
+      <Typography variant="h5" fontWeight={800} color={color} lineHeight={1.1}>{value}</Typography>
+    </StatPaper>
   );
 }
 
-// Students management (list/add/edit/delete)
-function Students({ students, addStudent, updateStudent, deleteStudent }) {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ full_name: "", roll_no: "", class: "" });
-  const [editId, setEditId] = useState(null);
-
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-  function startEdit(stud) {
-    setEditId(stud.id);
-    setForm({ full_name: stud.full_name, roll_no: stud.roll_no, class: stud.class });
-    setShowForm(true);
-  }
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (!form.full_name.trim() || !form.roll_no.trim() || !form.class.trim()) return;
-    if (editId) {
-      updateStudent(editId, { ...form });
-    } else {
-      addStudent(form);
-    }
-    setForm({ full_name: "", roll_no: "", class: "" });
-    setEditId(null);
-    setShowForm(false);
-  }
+// --- Student Management ---
+function Students({ students, addStudent, updateStudent, deleteStudent, openForm }) {
+  // For focus styling and smooth appearance, use MUI
   return (
-    <div className="students-section">
-      <div className="section-header">
-        <h2>Student List</h2>
-        <button className="btn-primary" onClick={() => { setShowForm(true); setEditId(null); setForm({ full_name: "", roll_no: "", class: "" }); }}>
-          <span className="material-icons" style={{ fontSize: 18, verticalAlign: "middle", marginRight: 3 }}>person_add</span>
+    <Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h4" fontWeight={700}>Student List</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<PersonAddIcon />}
+          onClick={() => openForm("add")}
+          sx={{
+            fontWeight: 700,
+            px: 2,
+            py: 1,
+            fontSize: "1.04em",
+            borderRadius: 2,
+            boxShadow: "0 2px 8px 0 #1976d220"
+          }}
+        >
           Add Student
-        </button>
-      </div>
-      <div className="table-responsive">
-        <table className="main-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Roll No</th>
-              <th>Class</th>
-              <th>Status</th>
-              <th style={{ minWidth: 100 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {students.length === 0 && (
-              <tr>
-                <td colSpan={5} style={{ color: COLORS.textLight, fontStyle: "italic" }}>
+        </Button>
+      </Box>
+      <Paper elevation={3} sx={{
+        overflowX: "auto",
+        borderRadius: 3,
+        boxShadow: "0 1.5px 12px #1976d211",
+        background: "#fff"
+      }}>
+        <Box component="table" width="100%" sx={{
+          borderCollapse: "collapse",
+          minWidth: 400
+        }}>
+          <Box component="thead" sx={{ bgcolor: "#F6FAFF" }}>
+            <Box component="tr">
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800, fontSize: "1.08em" }}>Name</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Roll No</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Class</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Status</Box>
+              <Box component="th" p={1.3} minWidth={110} sx={{ color: "primary.main", fontWeight: 800 }}>Actions</Box>
+            </Box>
+          </Box>
+          <Box component="tbody">
+            {students.length === 0 ? (
+              <Box component="tr" sx={{ background: "#fcfdff" }}>
+                <Box component="td" colSpan={5} sx={{ color: "text.secondary", fontStyle: "italic", textAlign: "center", py: 3 }}>
                   No students registered.
-                </td>
-              </tr>
+                </Box>
+              </Box>
+            ) : (
+              students.map((s) => (
+                <Box component="tr" key={s.id} sx={{ transition: "background .13s", "&:hover": { background: "#F4F7FF" } }}>
+                  <Box component="td" p={1.2}>{s.full_name}</Box>
+                  <Box component="td" p={1.2}>{s.roll_no}</Box>
+                  <Box component="td" p={1.2}>{s.class}</Box>
+                  <Box component="td" p={1.2}>
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 1,
+                        fontWeight: 700,
+                        color: s.active ? "success.main" : "error.main"
+                      }}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          display: "inline-block",
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          bgcolor: s.active ? "success.main" : "error.main",
+                          mr: 1
+                        }}
+                      />
+                      {s.active ? "Active" : "Inactive"}
+                    </Box>
+                  </Box>
+                  <Box component="td" p={1.2}>
+                    <Tooltip title="Edit">
+                      <IconButton color="primary" size="small" onClick={() => openForm("edit", s)}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton
+                        color="error"
+                        size="small"
+                        sx={{ ml: 0.5 }}
+                        onClick={() => {
+                          if (window.confirm("Delete permanently?")) deleteStudent(s.id);
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              ))
             )}
-            {students.map((s) => (
-              <tr key={s.id}>
-                <td>{s.full_name}</td>
-                <td>{s.roll_no}</td>
-                <td>{s.class}</td>
-                <td>
-                  <span className={`status-dot ${s.active ? "status-active" : "status-inactive"}`}></span>
-                  {s.active ? "Active" : "Inactive"}
-                </td>
-                <td>
-                  <button className="btn-sm" style={{ background: COLORS.primary, color: "#fff" }} onClick={() => startEdit(s)} title="Edit">
-                    <span className="material-icons" style={{ fontSize: 15 }}>edit</span>
-                  </button>
-                  <button className="btn-sm" style={{ background: COLORS.error, color: "#fff", marginLeft: 6 }} onClick={() => { if (window.confirm("Delete permanently?")) deleteStudent(s.id);}} title="Delete">
-                    <span className="material-icons" style={{ fontSize: 15 }}>delete</span>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {showForm && (
-        <div className="modal">
-          <form className="student-form" onSubmit={handleSubmit}>
-            <h3>{editId ? "Edit Student" : "Add Student"}</h3>
-            <label>
-              Name
-              <input required name="full_name" value={form.full_name} onChange={handleChange} />
-            </label>
-            <label>
-              Roll No
-              <input required name="roll_no" value={form.roll_no} onChange={handleChange} />
-            </label>
-            <label>
-              Class
-              <input required name="class" value={form.class} onChange={handleChange} />
-            </label>
-            <div style={{display:"flex",gap:8,marginTop:15}}>
-              <button className="btn-primary" type="submit">{editId ? "Save" : "Add"}</button>
-              <button className="btn-secondary" type="button" onClick={() => {setShowForm(false);setEditId(null);}}>Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
+          </Box>
+        </Box>
+      </Paper>
+    </Box>
   );
 }
 
-// Attendance Marking UI
+// --- Attendance Marking UI ---
 function Attendance({ students, attendance, markAttendance }) {
-  const [today] = useState(todayStr()); // today's date
-
+  const [today] = useState(todayStr());
   function handleChange(id, status) {
     markAttendance({ student_id: id, status, date: today });
   }
   return (
-    <div className="attendance-section">
-      <h2>Mark Today's Attendance</h2>
-      <div className="table-responsive">
-        <table className="main-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Roll No</th>
-              <th>Class</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {students.length === 0 && (
-              <tr>
-                <td colSpan={5} style={{ color: COLORS.textLight, fontStyle: "italic" }}>
+    <Box>
+      <Typography variant="h4" fontWeight={700} mb={2.2}>Mark Today's Attendance</Typography>
+      <Paper elevation={3} sx={{ overflowX: "auto", borderRadius: 3 }}>
+        <Box component="table" width="100%" sx={{ borderCollapse: "collapse", minWidth: 400 }}>
+          <Box component="thead" sx={{ bgcolor: "#F6FAFF" }}>
+            <Box component="tr">
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Name</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Roll No</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Class</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Status</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Action</Box>
+            </Box>
+          </Box>
+          <Box component="tbody">
+            {students.length === 0 ? (
+              <Box component="tr" sx={{ background: "#fcfdff" }}>
+                <Box component="td" colSpan={5} sx={{ color: "text.secondary", fontStyle: "italic", textAlign: "center", py: 3 }}>
                   No students registered.
-                </td>
-              </tr>
+                </Box>
+              </Box>
+            ) : (
+              students.map((s) => {
+                const rec = attendance.find((r) => r.student_id === s.id && r.date === today);
+                return (
+                  <Box component="tr" key={s.id} sx={{ transition: "background .13s", "&:hover": { background: "#F4F7FF" } }}>
+                    <Box component="td" p={1.2}>{s.full_name}</Box>
+                    <Box component="td" p={1.2}>{s.roll_no}</Box>
+                    <Box component="td" p={1.2}>{s.class}</Box>
+                    <Box component="td" p={1.2}>
+                      <Typography fontWeight={700} color={rec ? "primary.main" : "accent.main"}>
+                        {rec
+                          ? rec.status.charAt(0).toUpperCase() + rec.status.slice(1)
+                          : <span style={{ color: "#ffa726" }}>Not marked</span>}
+                      </Typography>
+                    </Box>
+                    <Box component="td" p={1.2}>
+                      <TextField
+                        select
+                        fullWidth
+                        value={rec ? rec.status : ""}
+                        size="small"
+                        onChange={e => handleChange(s.id, e.target.value)}
+                        sx={{ minWidth: 105 }}
+                        variant="outlined"
+                        color="primary"
+                        InputProps={{
+                          sx: {
+                            borderRadius: 2,
+                            background: "#f3f7fa"
+                          }
+                        }}
+                      >
+                        <MenuItem value="" disabled>Select</MenuItem>
+                        <MenuItem value="present">Present</MenuItem>
+                        <MenuItem value="absent">Absent</MenuItem>
+                        <MenuItem value="late">Late</MenuItem>
+                        <MenuItem value="leave">Leave</MenuItem>
+                      </TextField>
+                    </Box>
+                  </Box>
+                );
+              })
             )}
-            {students.map((s) => {
-              const rec = attendance.find(
-                (r) => r.student_id === s.id && r.date === today
-              );
-              return (
-                <tr key={s.id}>
-                  <td>{s.full_name}</td>
-                  <td>{s.roll_no}</td>
-                  <td>{s.class}</td>
-                  <td>
-                    <strong>
-                      {rec
-                        ? rec.status.charAt(0).toUpperCase() +
-                          rec.status.slice(1)
-                        : <span style={{ color: "#ffa726" }}>Not marked</span>}
-                    </strong>
-                  </td>
-                  <td>
-                    <select
-                      className="attendance-select"
-                      value={rec ? rec.status : ""}
-                      onChange={(e) => handleChange(s.id, e.target.value)}
-                    >
-                      <option value="" disabled>
-                        Select
-                      </option>
-                      <option value="present">Present</option>
-                      <option value="absent">Absent</option>
-                      <option value="late">Late</option>
-                      <option value="leave">Leave</option>
-                    </select>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="section-note">Attendance can only be marked for today ({today}).</div>
-    </div>
+          </Box>
+        </Box>
+      </Paper>
+      <Typography color="text.secondary" fontStyle="italic" fontSize={16} mt={1.7}>
+        Attendance can only be marked for today ({today}).
+      </Typography>
+    </Box>
   );
 }
 
-// Attendance History Table
+// --- Attendance History Table ---
 function AttendanceHistory({ attendance, students }) {
   // Sorted by date desc, then name
   const hist = [...attendance].sort((a, b) => {
@@ -628,74 +981,76 @@ function AttendanceHistory({ attendance, students }) {
     return b.date.localeCompare(a.date);
   });
   return (
-    <div className="history-section">
-      <h2>Attendance History</h2>
-      <div className="table-responsive">
-        <table className="main-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Name</th>
-              <th>Roll No</th>
-              <th>Class</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
+    <Box>
+      <Typography variant="h4" fontWeight={700} mb={2.2}>Attendance History</Typography>
+      <Paper elevation={3} sx={{ overflowX: "auto", borderRadius: 3 }}>
+        <Box component="table" width="100%" sx={{ borderCollapse: "collapse", minWidth: 400 }}>
+          <Box component="thead" sx={{ bgcolor: "#F6FAFF" }}>
+            <Box component="tr">
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Date</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Name</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Roll No</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Class</Box>
+              <Box component="th" p={1.3} sx={{ color: "primary.main", fontWeight: 800 }}>Status</Box>
+            </Box>
+          </Box>
+          <Box component="tbody">
             {hist.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ color: COLORS.textLight }}>
+              <Box component="tr" sx={{ background: "#fcfdff" }}>
+                <Box component="td" colSpan={5} sx={{ color: "text.secondary", textAlign: "center", fontSize: "1.1em", py: 3 }}>
                   No attendance records found.
-                </td>
-              </tr>
+                </Box>
+              </Box>
             ) : (
               hist.map((rec, idx) => {
                 const s = students.find((s) => s.id === rec.student_id);
                 return (
-                  <tr key={idx + "-" + rec.student_id}>
-                    <td>{rec.date}</td>
-                    <td>{rec.student_name}</td>
-                    <td>{s?.roll_no || "-"}</td>
-                    <td>{s?.class || "-"}</td>
-                    <td>
-                      <span
-                        className="history-badge"
-                        data-status={rec.status}
-                        style={{
-                          background:
-                            rec.status === "present"
-                              ? COLORS.success
-                              : rec.status === "absent"
-                              ? COLORS.error
-                              : rec.status === "late"
-                              ? COLORS.accent
-                              : "#888"
-                        }}
-                      >
-                        {rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}
-                      </span>
-                    </td>
-                  </tr>
+                  <Box component="tr" key={idx + "-" + rec.student_id} sx={{ transition: "background .13s", "&:hover": { background: "#F4F7FF" } }}>
+                    <Box component="td" p={1.1}>{rec.date}</Box>
+                    <Box component="td" p={1.1}>{rec.student_name}</Box>
+                    <Box component="td" p={1.1}>{s?.roll_no || "-"}</Box>
+                    <Box component="td" p={1.1}>{s?.class || "-"}</Box>
+                    <Box component="td" p={1.1}>
+                      <ChipStatus status={rec.status} />
+                    </Box>
+                  </Box>
                 );
               })
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </Box>
+        </Box>
+      </Paper>
+    </Box>
   );
 }
 
-// --------- Material Icons Inline --------
-/**
- * Only minimal CSS for Google Material Icons. User must have access to fonts.gstatic.com /fonts.googleapis.
- * Can be replaced with @font-face for true offline, but here just style fallback for demo.
- */
-const style = document.createElement('style');
-style.innerHTML = `
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-.material-icons { font-family: 'Material Icons', Arial, sans-serif; font-weight: normal; font-style: normal; font-size: 22px; display: inline-block; line-height: 1; letter-spacing: normal; text-transform: none; direction: ltr; -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;}
-`;
-document.head.appendChild(style);
+// --- Custom chip style for status ---
+function ChipStatus({ status }) {
+  let color = "accent.main", label = "";
+  if (status === "present") { color = "success.main"; label = "Present"; }
+  else if (status === "absent") { color = "error.main"; label = "Absent"; }
+  else if (status === "late") { color = "accent.main"; label = "Late"; }
+  else if (status === "leave") { color = "secondary.main"; label = "Leave"; }
+  else { color = "secondary.light"; label = status; }
+  return (
+    <Box
+      component="span"
+      sx={{
+        color: "#fff",
+        px: 2,
+        py: 0.7,
+        minWidth: 49,
+        borderRadius: 16,
+        fontWeight: 800,
+        display: "inline-block",
+        fontSize: { xs: 14, md: 15.5 },
+        backgroundColor: muiTheme.palette[color.split(".")[0]]?.main || "#888",
+        boxShadow: "0 1.5px 6px #1976d214"
+      }}
+    >
+      {label}
+    </Box>
+  );
+}
 
 export default App;
